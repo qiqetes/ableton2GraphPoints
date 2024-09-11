@@ -2,12 +2,15 @@
   "name": "ableton2graphpoints",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "scripts": {
     "dev": "nodemon",
     "start": "tsc && node ./dist/src/index.js",
     "test": "jest"
   },
+  "files": [
+    "./dist/src/index.js"
+  ],
+  "main": "./dist/src/index.js",
   "author": "",
   "license": "ISC",
   "devDependencies": {
