@@ -48,3 +48,5 @@ const graphPointsFromAbletonXML = (abletonXML: string) => {
 };
 
 main();
+
+export default graphPointsFromAbletonXML;
