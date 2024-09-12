@@ -1,7 +1,7 @@
 const extractSongStartAndEnd = (
   raw: AbletonRaw
 ): { start: number; end: number } => {
-  const transport = raw.Ableton.LiveSet.Transport;
+  const transport = raw.LiveSet.Transport;
   if (!transport) throw Error("Transport not found");
 
   const start = parseFloat(transport.LoopStart.Value);

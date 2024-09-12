@@ -1,6 +1,9 @@
 // import { describe, expect, test } from "@jest/globals";
 // import { horizontalTempos } from "../src/extractData/songTempo";
 
+import { expect, it } from "@jest/globals";
+import { describe } from "node:test";
+
 // describe("songTempos, horizontal", () => {
 //   const songTemposDef: SongTempo[] = [
 //     {
@@ -50,9 +53,3 @@
 //     expect(songTempos.length).toBe(121);
 //   });
 // });
-
-describe("songTempos, horizontal", () => {
-  it("should work", () => {
-    expect(true).toBe(true);
-  });
-});

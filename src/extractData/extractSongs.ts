@@ -5,7 +5,7 @@ const extractSongs = (
   songTempos: SongTempo[]
 ): Song[] => {
   const songs: Song[] = [];
-  const audioTracks = abletonRaw.Ableton.LiveSet.Tracks.AudioTrack;
+  const audioTracks = abletonRaw.LiveSet.Tracks.AudioTrack;
   if (!audioTracks || !audioTracks.length) throw Error("AudioTrack not found");
 
   audioTracks.forEach((songRaw) => {

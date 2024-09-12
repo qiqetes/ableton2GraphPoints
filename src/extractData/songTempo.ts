@@ -10,8 +10,7 @@ const extractSongTempo = (
   songStart: number,
   songEnd: number
 ): SongTempo[] => {
-  const mainTrack =
-    rawData.Ableton.LiveSet.MasterTrack || rawData.Ableton.LiveSet.MainTrack;
+  const mainTrack = rawData.LiveSet.MasterTrack || rawData.LiveSet.MainTrack;
   if (!mainTrack) throwError("Master or Main track not found");
   const automationEnvelopes =
     mainTrack.AutomationEnvelopes.Envelopes.AutomationEnvelope;
@@ -131,7 +130,23 @@ export const diagonalTime = (
   finalBPM: number,
   beat: number,
   initialTimeSeconds: number
-) => {
+): number => {
+  if (beat != finalBeat) {
+    const finalBPM2: number =
+      initialBPM +
+      ((finalBPM - initialBPM) / (finalBeat - initialBeat)) *
+        (beat - initialBeat);
+    console.log("FinalBPM2", finalBPM2);
+    return diagonalTime(
+      initialBeat,
+      beat,
+      initialBPM,
+      finalBPM2,
+      beat,
+      initialTimeSeconds
+    );
+  }
+
   const totalBeatsStretch = finalBeat - initialBeat;
   const totalBeats = beat - initialBeat;
   if (totalBeatsStretch < 0)

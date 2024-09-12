@@ -1,5 +1,9 @@
 // import { timeInSongTempo } from "./songTempo";
 
+import { AbletonGraphPoint } from "../types";
+import { timeInSongTempo } from "./songTempo";
+
+// Comes from mixmeisterFunctions
 export const processLabelPoint = (
   label: string
 ): {
@@ -7,32 +11,30 @@ export const processLabelPoint = (
   resistance: string;
   method: string;
 } => {
-  // Split the label by '=' character
-  const parts = label.split("=");
+  let zone: number | undefined; // Este valor debe ser undefined siempre al inicio.
+  let resistance: number | undefined;
+  let method: string = "";
 
-  if (parts.length < 1) {
-    throw new Error(`Invalid label: ${label}`);
-  }
-
-  // Initialize variables
-  let zone = 0;
-  let resistance = "Baja";
-  let method = "";
-
-  // Process each part of the label
-  parts.forEach((part, index) => {
-    const trimmedPart = part.trim();
-
-    if (index === 0 && /^p?[0-9.,]+/.test(trimmedPart)) {
-      zone = parseFloat(trimmedPart);
-    } else if (index === 1 && /^[1-5]$/.test(trimmedPart)) {
-      resistance = ResistanceMap[parseInt(trimmedPart, 10)];
-    } else if (isNaN(parseFloat(trimmedPart))) {
-      method = trimmedPart;
+  label.split("=").forEach((value) => {
+    console.log(value);
+    const numericValue = value.match(/^p?[0-9.,]+/)?.length;
+    if (numericValue && !zone) {
+      // Primer valor numerico es la zona
+      zone = parseFloat(value.replace("p", "")) - 1;
+    } else if (numericValue) {
+      // segundo valor númerico es la resistencia
+      resistance = parseFloat(value);
+    } else if (isNaN(parseFloat(value))) {
+      // cualquier string es el método de trabajo
+      method = value;
     }
   });
 
-  return { zone, resistance, method };
+  return {
+    zone: zone ?? 0,
+    resistance: ResistanceMap[resistance ?? 1],
+    method: method,
+  };
 };
 
 const extractGraphPoints = (
@@ -41,45 +43,42 @@ const extractGraphPoints = (
   songs: Song[],
   songStart: number,
   songEnd: number
-): GraphPoint[] => {
-  const locators: GraphPoint[] = [];
-  const locatorsRaw =
-    abletonRaw.Ableton.LiveSet.Locators.Locators.Locator.filter(
-      (locatorRaw) =>
-        parseFloat(locatorRaw.Time.Value) > songStart &&
-        parseFloat(locatorRaw.Time.Value) < songEnd
-    );
+): AbletonGraphPoint[] => {
+  const locators: AbletonGraphPoint[] = [];
+  const locatorsRaw = abletonRaw.LiveSet.Locators.Locators.Locator.filter(
+    (locatorRaw) =>
+      parseFloat(locatorRaw.Time.Value) > songStart &&
+      parseFloat(locatorRaw.Time.Value) < songEnd
+  );
 
-  // TODO: añadir el primer punto??
   locators.push(firstPoint);
 
   locatorsRaw.forEach((locatorRaw) => {
     const label = locatorRaw.Name.Value;
     const beat = parseInt(locatorRaw.Time.Value);
-    let songTempo = songTempos.find((tempo) => tempo.beat === beat);
-    if (!songTempo) {
-      // songTempo = timeInSongTempo(songTempos, beat);
-      songTempo = songTempos.findLast((tempo) => tempo.beat <= beat);
-      if (!songTempo) {
-        throw new Error(`Song tempo not found for beat ${beat}`);
-      }
-    }
+    const songTempo = timeInSongTempo(songTempos, beat);
 
     try {
       const { zone, resistance, method } = processLabelPoint(label);
+
       const song = songs.find(
         (song) => song.startBeat <= beat && song.endBeat >= beat
       );
 
       locators.push({
         zone,
-        track: song?.name,
-        artist: song?.artist,
+        track: song?.name ?? "",
+        artist: song?.artist ?? "",
         endOfInterval: 0,
         startOfInterval: 0,
         resistance: resistance as any,
         timeString: secondsToString(songTempo.timeSeconds),
-        timeSeconds: songTempo.timeSeconds,
+        endTime: songTempo.timeSeconds,
+        blockIndex: 0,
+        intervalTime: 0,
+        inLastBlock: false,
+        nextRestAt: 0,
+        startTime: songTempo.timeSeconds,
         block: "", // no sé que es
         method,
         rpm: songTempo.bpm.toString(),
@@ -89,8 +88,14 @@ const extractGraphPoints = (
     }
   });
 
-  const locatorsByTime = locators.sort((a, b) => a.timeSeconds - b.timeSeconds);
+  // The zone is shifted to the left if its Watts
+  locators.forEach((locator, index) => {
+    locator.zone = locators[index + 1]?.zone;
+  });
 
+  const locatorsByTime = locators.sort((a, b) => a.startTime - b.startTime);
+
+  //@ts-ignore
   return locatorsByTime;
 };
 
@@ -109,13 +114,15 @@ export const secondsToString = (secondsNumber: number) => {
       ":" +
       minutes.toString().padStart(2, "0") +
       ":" +
-      seconds.toString().padStart(2, "0")
+      seconds.toString().padStart(2, "0") +
+      ":00"
     );
 
   return (
     minutes.toString().padStart(2, "0") +
     ":" +
-    seconds.toString().padStart(2, "0")
+    seconds.toString().padStart(2, "0") +
+    ":00"
   );
 };
 
@@ -127,12 +134,14 @@ const ResistanceMap: { [key: number]: string } = {
   5: "Alta",
 };
 
-const firstPoint: GraphPoint = {
+// @ts-ignore - This is a dummy point that is added to the start of the
+// graph, doesn't have some properties that the other points have
+const firstPoint: AbletonGraphPoint = {
   zone: 0,
   resistance: "Baja",
   method: "",
   timeString: "00:00:00",
-  timeSeconds: 0,
+  startTime: 0,
   rpm: "",
   block: "",
   endOfInterval: 0,
